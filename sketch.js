@@ -19,7 +19,14 @@ let leftEye = null
 let leftEyePos
 let sharingan
 let eyeLayer
-let eyeDrawingLayer 
+let eyeDrawingLayer
+let myFrameCount = 0
+let eyeX
+let eyeY
+let eyeWidth
+let eyeLeft
+let eyeTop
+let bufferFrame = 0
 
 // by default all options are set to true
 const detection_options = {
@@ -43,7 +50,7 @@ function setup() {
   createCanvas(w, h, WEBGL);
 
   pg = createGraphics(w, h, WEBGL);
-  eyeLayer = createGraphics(100,100)
+  eyeLayer = createGraphics(100, 100)
   eyeDrawingLayer = createGraphics(w, h)
   cam = createCapture(VIDEO);
   cam.size(w, h);
@@ -51,7 +58,7 @@ function setup() {
   cam.hide();
   translate(-w / 2, -h / 2)
   faceapi = ml5.faceApi(cam, detection_options, modelReady)
-  eyeLayer.translate(50,50)
+  eyeLayer.translate(50, 50)
 }
 
 
@@ -63,15 +70,24 @@ function gotResults(err, result) {
     console.log(err)
     return
   }
-  
-  eyeLayer.rotate(0.1)
-  eyeLayer.image(sharingan, -50,-50, 100,100)
+
+  eyeLayer.rotate(-0.3)
+  eyeLayer.image(sharingan, -50, -50, 100, 100)
   // console.log(result)
   detections = result;
 
   if (detections) {
     if (detections.length > 0) {
+      // let theText = detections[0].detection.score
+      // console.log(theText)
+
+
       leftEye = detections[0].parts.leftEye;
+      myFrameCount++
+    } else {
+
+
+      myFrameCount = 0
 
     }
   }
@@ -80,7 +96,10 @@ function gotResults(err, result) {
 
   // passing cam as a texture
   theShader.setUniform('tex0', cam);
-  theShader.setUniform('')
+  theShader.setUniform("iResolution", [width, height]);
+  theShader.setUniform("iFrame", myFrameCount);
+
+
   // rect gives us some geometry on the screen
   pg.rect(0, 0, width, height);
   image(pg, 0, 0)
@@ -88,45 +107,35 @@ function gotResults(err, result) {
 
   noStroke()
   fill('blue')
-  if(leftEye != null){
-    let x = (leftEye[1]._x + leftEye[2]._x)/2
-    let y = leftEye[0]._y
-    let width = (leftEye[3]._x - leftEye[0]._x)/2
-    let left = x - width/2
-    let top = y - width/2
-    image(eyeLayer, left, top, width, width)
-  }
-  
-
-  // if (detections) {
-  //   if (detections.length > 0) {
-  //     // console.log(detections)
-  //     // drawBox(detections)
-  //     // drawLandmarks(detections)
-  //   }
-
-  // }
-
-  // loadPixels();
-  //  for(let i = 0; i < 10; i++){
-  //   console.log(pixels[i] +" ][]" + i)
-  //  }
-  if (mouseIsPressed) {
-    console.log(leftEye)
-    image(pg, 0, 0)
-    // saveCanvas(pg, 'myCanvas', 'jpg');
-    if (color == 'red') {
-      color = 'blue'
-
-    } else {
-      color = 'green'
+  if (leftEye != null && detections) {
+    eyeX = (leftEye[1]._x + leftEye[2]._x) / 2
+    eyeY = leftEye[0]._y
+    eyeWidth = (leftEye[3]._x - leftEye[0]._x) / 2
+    eyeLeft = eyeX - eyeWidth / 2.5
+    eyeTop = eyeY - eyeWidth / 2.2
+    if (detections) {
+      if (detections.length > 0) {
+        image(eyeLayer, eyeLeft, eyeTop, eyeWidth, eyeWidth)
+      }
     }
+    
+  }
+
+  theShader.setUniform("iMouse", [map(eyeLeft + eyeWidth / 2, 0, width, 0, 1), map(eyeTop + eyeWidth / 2, 0, height, 0, 1)]);
+  if (mouseIsPressed) {
+    if (detections) {
+
+      console.log(detections[0].detection.score)
+
+    }
+    // console.log(detections)
+
 
   }
 
   faceapi.detect(gotResults)
 }
-
+//============================End of my code ==================================
 function modelReady() {
   console.log('ready!')
   console.log(faceapi)
