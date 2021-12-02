@@ -8,8 +8,8 @@
 let theShader;
 // this variable will hold our webcam video
 let cam;
-let w = 600
-let h
+let w 
+let h = 720
 
 let faceapi;
 let pg;
@@ -27,6 +27,9 @@ let eyeWidth
 let eyeLeft
 let eyeTop
 let bufferFrame = 0
+let predictions = [];
+let handpose;
+let detected = false
 
 // by default all options are set to true
 const detection_options = {
@@ -45,9 +48,9 @@ function preload() {
 function setup() {
   angleMode(DEGREES)
   noStroke()
-  h = w * 2 / 3
+  w = h * 4 / 3
   // shaders require WEBGL mode to work
-  createCanvas(w, h, WEBGL);
+  createCanvas(w, h);
 
   pg = createGraphics(w, h, WEBGL);
   eyeLayer = createGraphics(100, 100)
@@ -56,41 +59,24 @@ function setup() {
   cam.size(w, h);
 
   cam.hide();
-  translate(-w / 2, -h / 2)
+  // translate(-w / 2, -h / 2)
+  
+  handpose = ml5.handpose(cam);
+  handpose.on("predict", results => {
+    predictions = results;
+  });
+
+
   faceapi = ml5.faceApi(cam, detection_options, modelReady)
+
   eyeLayer.translate(50, 50)
 }
 
-
-
-
-function gotResults(err, result) {
+function draw(){
+  
   background(220);
-  if (err) {
-    console.log(err)
-    return
-  }
-
   eyeLayer.rotate(-0.3)
   eyeLayer.image(sharingan, -50, -50, 100, 100)
-  // console.log(result)
-  detections = result;
-
-  if (detections) {
-    if (detections.length > 0) {
-      // let theText = detections[0].detection.score
-      // console.log(theText)
-
-
-      leftEye = detections[0].parts.leftEye;
-      myFrameCount++
-    } else {
-
-
-      myFrameCount = 0
-
-    }
-  }
 
   pg.shader(theShader);
 
@@ -98,12 +84,11 @@ function gotResults(err, result) {
   theShader.setUniform('tex0', cam);
   theShader.setUniform("iResolution", [width, height]);
   theShader.setUniform("iFrame", myFrameCount);
-
-
-  // rect gives us some geometry on the screen
+  if(detected == true){
+    myFrameCount++
+  }
   pg.rect(0, 0, width, height);
-  image(pg, 0, 0)
-
+  image(pg, 0,0)
 
   noStroke()
   fill('blue')
@@ -118,10 +103,40 @@ function gotResults(err, result) {
         image(eyeLayer, eyeLeft, eyeTop, eyeWidth, eyeWidth)
       }
     }
-    
   }
 
   theShader.setUniform("iMouse", [map(eyeLeft + eyeWidth / 2, 0, width, 0, 1), map(eyeTop + eyeWidth / 2, 0, height, 0, 1)]);
+
+  drawKeypoints();
+}
+
+
+function gotResults(err, result) {//update
+  // console.log(predictions)
+  
+  if (err) {
+    console.log(err)
+    return
+  }
+
+  
+  // console.log(result)
+  detections = result;
+
+  if (detections) {
+    if (detections.length > 0) {
+      // detected = true
+      // let theText = detections[0].detection.score
+      // console.log(theText)
+      leftEye = detections[0].parts.leftEye;
+
+    } else{
+      detected = false
+      myFrameCount = 0
+    }
+  }
+
+  
   if (mouseIsPressed) {
     if (detections) {
 
@@ -129,13 +144,36 @@ function gotResults(err, result) {
 
     }
     // console.log(detections)
-
-
   }
 
+
+  
+  // drawRect()
+  
   faceapi.detect(gotResults)
 }
+
+function drawRect(){
+  push()
+  const keypoint = prediction.annotations.thumb[3];
+  rect(keypoint.x, keypoint.y, 100,   100)
+  pop()
+}
 //============================End of my code ==================================
+
+function drawKeypoints() {
+  for (let i = 0; i < predictions.length; i += 1) {
+    const prediction = predictions[i];
+    for (let j = 0; j < prediction.annotations.thumb.length; j += 1) {
+      const keypoint = prediction.annotations.thumb[j];
+      fill(j*40, 255, 0);
+      noStroke();
+      ellipse(keypoint[0], keypoint[1], 10, 10);
+    }
+    text(int(prediction.annotations.thumb[0][1]), 100, 100)
+  }
+}
+
 function modelReady() {
   console.log('ready!')
   console.log(faceapi)
